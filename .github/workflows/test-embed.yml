@@ -1,0 +1,32 @@
+# Manual end-to-end check: set the DISCORD_WEBHOOK secret on this repo, run
+# this workflow, and watch the embed land in the channel. With no secret set
+# it exercises the skip path instead.
+name: Test embed
+
+on:
+  workflow_dispatch:
+    inputs:
+      status:
+        description: Embed status to send
+        type: choice
+        options: [success, failure]
+        default: success
+
+permissions: {}
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Send test embed
+        uses: ./actions/discord-notify
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ inputs.status }}
+          title: tonk test embed
+          description: If you can read this, the webhook and the action both work.
+          username: tonk
