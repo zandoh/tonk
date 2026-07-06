@@ -1,0 +1,98 @@
+name: Discord notify
+description: >-
+  Post a status embed to a Discord webhook. Skips silently when the webhook
+  is unset (fork-safe) and warns instead of failing when Discord is down.
+
+inputs:
+  webhook-url:
+    description: Discord webhook URL (store as a repo secret, never in the workflow)
+    required: true
+  title:
+    description: Embed headline; when `status` is set an emoji prefix is added
+    required: true
+  status:
+    description: success or failure — sets the emoji prefix and default color
+    required: false
+  description:
+    description: >-
+      Embed body, truncated to Discord's 4096-char limit. Defaults to
+      "repo · branch · sha" plus the commit subject.
+    required: false
+  url:
+    description: Link target for the title; defaults to the current run's URL
+    required: false
+  color:
+    description: >-
+      Decimal embed color; overrides the status default
+      (failure 15548997, success 5763719, otherwise 3447003)
+    required: false
+  username:
+    description: Bot username for this post; empty keeps the webhook's default
+    required: false
+  footer:
+    description: Footer text; defaults to the workflow name
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Post to Discord
+      shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        STATUS: ${{ inputs.status }}
+        TITLE: ${{ inputs.title }}
+        DESCRIPTION: ${{ inputs.description }}
+        URL: ${{ inputs.url }}
+        COLOR: ${{ inputs.color }}
+        BOT_USERNAME: ${{ inputs.username }}
+        FOOTER: ${{ inputs.footer }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        REPO: ${{ github.repository }}
+        REF_NAME: ${{ github.ref_name }}
+        SHA: ${{ github.sha }}
+        WORKFLOW: ${{ github.workflow }}
+        COMMIT_MSG: ${{ github.event.head_commit.message || github.event.pull_request.title || '' }}
+      run: |
+        if [ -z "$WEBHOOK_URL" ]; then
+          # Fork PRs don't receive secrets; skip rather than fail the run.
+          echo "No webhook URL available; skipping Discord notification."
+          exit 0
+        fi
+
+        case "$STATUS" in
+          success) EMOJI="✅ "; DEFAULT_COLOR=5763719 ;;
+          failure) EMOJI="❌ "; DEFAULT_COLOR=15548997 ;;
+          *)       EMOJI="";    DEFAULT_COLOR=3447003 ;;
+        esac
+        case "$COLOR" in
+          ''|*[!0-9]*) COLOR="$DEFAULT_COLOR" ;;
+        esac
+
+        if [ -z "$DESCRIPTION" ]; then
+          FIRST_LINE=$(printf '%s' "$COMMIT_MSG" | head -n 1)
+          DESCRIPTION="$REPO · \`$REF_NAME\` · \`${SHA:0:7}\`"$'\n'"$FIRST_LINE"
+        fi
+
+        payload=$(jq -n \
+          --arg title "${EMOJI}${TITLE}" \
+          --arg url "${URL:-$RUN_URL}" \
+          --arg desc "$DESCRIPTION" \
+          --arg footer "${FOOTER:-$WORKFLOW}" \
+          --arg username "$BOT_USERNAME" \
+          --argjson color "$COLOR" \
+          '(if $username == "" then {} else {username: $username} end) + {
+            embeds: [{
+              title: ($title | .[0:256]),
+              url: $url,
+              description: ($desc | if length > 4096 then .[0:4093] + "..." else . end),
+              color: $color,
+              footer: {text: $footer},
+              timestamp: (now | todate)
+            }]
+          }')
+
+        # A Discord outage shouldn't flip a green run red: warn, don't fail.
+        curl -sS --fail-with-body -X POST -H "Content-Type: application/json" \
+          -d "$payload" "$WEBHOOK_URL" \
+          || echo "::warning::Discord notification failed"
