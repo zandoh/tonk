@@ -8,6 +8,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/tag/zandoh/tonk?label=release)](https://github.com/zandoh/tonk/tags)
 
+**Docs site:** [zandoh.github.io/tonk](https://zandoh.github.io/tonk/)
+
 Posting an embed to a webhook is the easy part. The hard part is state:
 knowing that this red build is worth a ping, and that this green build is the
 *first* green after a red streak — not the hundredth routine success. tonk
