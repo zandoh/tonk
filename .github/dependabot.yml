@@ -1,0 +1,11 @@
+# Keeps the SHA-pinned actions (e.g. actions/checkout) fresh. A bump here
+# only reaches consumers when a new tonk tag is cut.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Let new action releases bake before we take them (supply-chain caution).
+    cooldown:
+      default-days: 7

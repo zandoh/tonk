@@ -1,0 +1,14 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # Self-references ride this repo's own tags on purpose: notify.yml@v1
+        # must use discord-notify@v1, and the dogfood caller tracks @main.
+        "zandoh/*": ref-pin
+        "*": hash-pin
+  dangerous-triggers:
+    # tonk.yml (the dogfood caller) listens on workflow_run by design —
+    # that's the entire product. It checks out nothing from the triggering
+    # ref and grants only actions:read.
+    ignore:
+      - tonk.yml

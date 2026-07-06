@@ -9,17 +9,40 @@ permissions:
   contents: read
 
 jobs:
-  actionlint:
+  # Same gates as `make lint` locally: actionlint, yamllint, zizmor, and
+  # shellcheck over the scripts embedded in the YAML.
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - name: Run actionlint
+      - name: Install linters
         run: |
-          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          ./actionlint -color
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL -o /tmp/download-actionlint.bash \
+            https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash
+          bash /tmp/download-actionlint.bash latest "$HOME/.local/bin"
+          pipx install yamllint
+          pipx install zizmor
+
+      - name: Lint
+        run: make lint
+
+  # Same as `make test`: the bats suite for the embedded scripts.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install bats
+        run: sudo apt-get install -y bats
+
+      - name: Test
+        run: make test
 
   # A bug in the guard path fans out to six repos: prove that an unset
   # webhook skips cleanly instead of failing the calling job.
