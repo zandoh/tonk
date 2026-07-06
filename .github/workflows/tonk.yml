@@ -14,4 +14,4 @@ jobs:
   notify:
     uses: zandoh/tonk/.github/workflows/notify.yml@main
     secrets:
-      webhook: ${{ secrets.DISCORD_WEBHOOK }}
+      webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}

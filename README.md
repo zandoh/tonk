@@ -24,7 +24,7 @@ Named for Mechagon's Tussle Tonks: a little machine that keeps fighting.
 1. Create a Discord webhook (channel → Integrations → Webhooks) and store it:
 
    ```sh
-   gh secret set DISCORD_WEBHOOK --repo you/your-repo
+   gh secret set TONK_DISCORD_WEBHOOK --repo you/your-repo
    ```
 
 2. Add the thin caller, listing the workflows you want watched
@@ -43,7 +43,7 @@ Named for Mechagon's Tussle Tonks: a little machine that keeps fighting.
      notify:
        uses: zandoh/tonk/.github/workflows/notify.yml@v1
        secrets:
-         webhook: ${{ secrets.DISCORD_WEBHOOK }}
+         webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
    ```
 
 3. Optionally add a personality file:
@@ -69,7 +69,7 @@ digests, deploy summaries — call the action directly:
 - name: Announce release on Discord
   uses: zandoh/tonk/actions/discord-notify@v1
   with:
-    webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+    webhook-url: ${{ secrets.TONK_DISCORD_WEBHOOK }}
     title: 🚀 my-tool v1.2.3 released
     description: ${{ steps.notes.outputs.body }}
     url: https://github.com/you/my-tool/releases/tag/v1.2.3
@@ -93,13 +93,13 @@ digests, deploy summaries — call the action directly:
 
 - Colors: red `15548997` failure, green `5763719` recovery/success.
 - Webhook URLs are secrets, never in workflow files. The canonical secret
-  name is `DISCORD_WEBHOOK`.
+  name is `TONK_DISCORD_WEBHOOK`.
 - A notification must never break the thing it reports on: unset webhook →
   skip, Discord outage → `::warning::`, fork PR → skip.
 
 ## Verifying a setup
 
-Set `DISCORD_WEBHOOK` on this repo and dispatch the **Test embed** workflow;
+Set `TONK_DISCORD_WEBHOOK` on this repo and dispatch the **Test embed** workflow;
 the embed landing in the channel proves the secret and the action end to end.
 
 ## Versioning

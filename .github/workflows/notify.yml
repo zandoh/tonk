@@ -15,7 +15,7 @@
 #     notify:
 #       uses: zandoh/tonk/.github/workflows/notify.yml@v1
 #       secrets:
-#         webhook: ${{ secrets.DISCORD_WEBHOOK }}
+#         webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
 #
 # Per-repo personality (username, event toggles) lives in the caller's
 # .github/discord.yml — see the README for the schema.
