@@ -1,0 +1,148 @@
+# Reusable failure + back-to-green Discord notifications.
+#
+# Runs via workflow_run rather than steps inside each workflow, so a run that
+# dies before its own notify step would have executed still reports. Call it
+# from a thin workflow in the consuming repo and grant `actions: read` so the
+# recovery check can query previous run conclusions:
+#
+#   on:
+#     workflow_run:
+#       workflows: [CI, Release]
+#       types: [completed]
+#   permissions:
+#     actions: read
+#   jobs:
+#     notify:
+#       uses: zandoh/tonk/.github/workflows/notify.yml@v1
+#       secrets:
+#         webhook: ${{ secrets.DISCORD_WEBHOOK }}
+#
+# Per-repo personality (username, event toggles) lives in the caller's
+# .github/discord.yml — see the README for the schema.
+name: Discord notify
+
+on:
+  workflow_call:
+    inputs:
+      config-path:
+        description: Path to the caller's Discord config file
+        type: string
+        required: false
+        default: .github/discord.yml
+    secrets:
+      webhook:
+        description: Discord webhook URL; when unset every post skips silently
+        required: false
+
+jobs:
+  notify:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    steps:
+      # workflow_run executes in default-branch context, so this reads the
+      # caller's config as of the default branch — the sane semantic for it.
+      - name: Check out caller config
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Read config and build messages
+        id: cfg
+        env:
+          CONFIG_PATH: ${{ inputs.config-path }}
+          EVENT: ${{ github.event.workflow_run.event }}
+          WF_NAME: ${{ github.event.workflow_run.name }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          username=""
+          failure=true
+          recovery=true
+          prs=false
+          if [ -f "$CONFIG_PATH" ]; then
+            username=$(yq '.username // ""' "$CONFIG_PATH")
+            # yq's // alternative operator swallows explicit false, so compare
+            if [ "$(yq '.notify.failure' "$CONFIG_PATH")" = "false" ]; then failure=false; fi
+            if [ "$(yq '.notify.recovery' "$CONFIG_PATH")" = "false" ]; then recovery=false; fi
+            if [ "$(yq '.notify.pull-requests' "$CONFIG_PATH")" = "true" ]; then prs=true; fi
+          fi
+
+          # PR runs are excluded by default — red PRs are part of iterating.
+          if [ "$EVENT" = "pull_request" ] && [ "$prs" = "false" ]; then
+            echo "Pull-request run and notify.pull-requests is off; skipping."
+            failure=false
+            recovery=false
+          fi
+
+          where=""
+          if [ -n "$BRANCH" ]; then where=" on $BRANCH"; fi
+          subject=$(printf '%s' "$COMMIT_MSG" | head -n 1)
+
+          {
+            echo "username=$username"
+            echo "failure=$failure"
+            echo "recovery=$recovery"
+            echo "fail_title=${WF_NAME} failed${where}"
+            echo "ok_title=${WF_NAME} back to green${where}"
+            echo "desc=${subject} (\`$(printf '%.7s' "$SHA")\`)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check whether this green run ended a failure streak
+        id: prev
+        if: >-
+          github.event.workflow_run.conclusion == 'success' &&
+          steps.cfg.outputs.recovery == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          WF_ID: ${{ github.event.workflow_run.workflow_id }}
+          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          recovered=false
+          if [ -z "$BRANCH" ]; then
+            echo "No head branch (tag-triggered run?); skipping recovery check."
+          else
+            prev=$(gh api -X GET "repos/${REPO}/actions/workflows/${WF_ID}/runs" \
+              -f branch="$BRANCH" -f status=completed -F per_page=50 \
+              | jq -r --argjson n "$RUN_NUMBER" \
+                '[.workflow_runs[] | select(.run_number < $n)]
+                 | sort_by(.run_number) | last | .conclusion // empty')
+            # Only fires when the previous completed run of the same workflow
+            # on the same branch failed — one "back to green" per incident,
+            # not one per green push.
+            if [ "$prev" = "failure" ]; then
+              recovered=true
+            else
+              echo "Previous run concluded '${prev:-none}'; not a recovery."
+            fi
+          fi
+          echo "recovered=$recovered" >> "$GITHUB_OUTPUT"
+
+      - name: Post failure to Discord
+        if: >-
+          github.event.workflow_run.conclusion == 'failure' &&
+          steps.cfg.outputs.failure == 'true'
+        uses: zandoh/tonk/actions/discord-notify@v1
+        with:
+          webhook-url: ${{ secrets.webhook }}
+          status: failure
+          title: ${{ steps.cfg.outputs.fail_title }}
+          description: ${{ steps.cfg.outputs.desc }}
+          url: ${{ github.event.workflow_run.html_url }}
+          username: ${{ steps.cfg.outputs.username }}
+          footer: ${{ github.event.workflow_run.name }}
+
+      - name: Post recovery to Discord
+        if: steps.prev.outputs.recovered == 'true'
+        uses: zandoh/tonk/actions/discord-notify@v1
+        with:
+          webhook-url: ${{ secrets.webhook }}
+          status: success
+          title: ${{ steps.cfg.outputs.ok_title }}
+          description: ${{ steps.cfg.outputs.desc }}
+          url: ${{ github.event.workflow_run.html_url }}
+          username: ${{ steps.cfg.outputs.username }}
+          footer: ${{ github.event.workflow_run.name }}
