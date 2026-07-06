@@ -102,6 +102,25 @@ digests, deploy summaries — call the action directly:
 Set `TONK_DISCORD_WEBHOOK` on this repo and dispatch the **Test embed** workflow;
 the embed landing in the channel proves the secret and the action end to end.
 
+## Development
+
+```sh
+make tools   # one-time: install the toolchain (macOS/Homebrew)
+make check   # everything CI runs: lint + test
+```
+
+`make lint` runs actionlint (workflow semantics), yamllint (style — this is
+the formatting gate; there's no YAML auto-formatter on purpose, they mangle
+comment-heavy workflow files), zizmor (workflow security), and shellcheck.
+
+`make test` runs a bats suite against the bash embedded in the YAML — the
+scripts are extracted from the real files at test time
+(`scripts/extract-step.sh`), so tests can't drift from what ships. Network
+edges (curl, gh) are shimmed; tests assert on the exact JSON payloads.
+
+Dependabot keeps the SHA-pinned actions fresh (with a 7-day cooldown); a
+bump only reaches consumers when a new tag is cut.
+
 ## Versioning
 
 `v1` is a moving major tag; the reusable workflow and the composite action
