@@ -1,23 +1,25 @@
 # tonk
 
-Shared Discord notifications for GitHub Actions: one composite action to send
-an embed, one reusable workflow that turns raw workflow results into signals
-worth reading — **failures** and **back to green** recoveries, exactly once
-per incident.
+> Shared Discord notifications for GitHub Actions — failure alerts,
+> once-per-incident "back to green" recoveries, and a reusable embed action
+> with guard rails.
 
-Named for Mechagon's Tussle Tonks: a little machine that keeps fighting.
+[![CI](https://github.com/zandoh/tonk/actions/workflows/ci.yml/badge.svg)](https://github.com/zandoh/tonk/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/tag/zandoh/tonk?label=release)](https://github.com/zandoh/tonk/tags)
 
-## What you get
+Posting an embed to a webhook is the easy part. The hard part is state:
+knowing that this red build is worth a ping, and that this green build is the
+*first* green after a red streak — not the hundredth routine success. tonk
+handles that by recomputing state from the GitHub API at notification time.
+No server, no database, nothing to host.
 
-- **`actions/discord-notify`** — a composite action that posts one embed.
-  Guard rails built in: skips silently when the webhook is unset (fork PRs
-  never fail), warns instead of failing when Discord is down, truncates to
-  Discord's limits.
-- **`.github/workflows/notify.yml`** — a reusable workflow for
-  `workflow_run` events. Notifies on failure, and detects recovery by asking
-  the GitHub API whether the previous completed run of the same workflow on
-  the same branch was red — so you get one "back to green" per incident, not
-  one per green push.
+## What's in the box
+
+| Piece | Purpose |
+|---|---|
+| [`actions/discord-notify`](actions/discord-notify/action.yml) | Composite action that posts one embed, with guard rails built in |
+| [`.github/workflows/notify.yml`](.github/workflows/notify.yml) | Reusable workflow: failure alerts + back-to-green recovery detection for `workflow_run` events |
 
 ## Quick start
 
@@ -27,8 +29,8 @@ Named for Mechagon's Tussle Tonks: a little machine that keeps fighting.
    gh secret set TONK_DISCORD_WEBHOOK --repo you/your-repo
    ```
 
-2. Add the thin caller, listing the workflows you want watched
-   (`workflow_run` requires naming them — no wildcards):
+2. Add a thin caller workflow, naming the workflows to watch
+   (`workflow_run` requires explicit names — no wildcards):
 
    ```yaml
    # .github/workflows/tonk.yml
@@ -46,24 +48,38 @@ Named for Mechagon's Tussle Tonks: a little machine that keeps fighting.
          webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
    ```
 
-3. Optionally add a personality file:
+3. Optionally add `.github/discord.yml` to give the repo a personality
+   (see [Configuration](#configuration)).
 
-   ```yaml
-   # .github/discord.yml — all keys optional, defaults shown
-   username: "" # bot name for posts; empty keeps the webhook's default
-   notify:
-     failure: true
-     recovery: true
-     pull-requests: false # PR runs are skipped by default; red PRs are part of iterating
-   ```
+That's the whole integration. Failures in the watched workflows post a red
+embed; the first green run after a failure posts a "back to green" — and
+only the first, because the reusable workflow checks whether the previous
+completed run of the same workflow on the same branch was red.
 
-The config is read from the repo's default branch (where `workflow_run`
-executes), so config changes take effect on merge.
+## Configuration
 
-## Sending a one-off embed
+`.github/discord.yml` in the calling repo, read from the default branch.
+Every key is optional.
+
+| Key | Default | Meaning |
+|---|---|---|
+| `username` | webhook default | Bot name shown on posts |
+| `notify.failure` | `true` | Post when a watched workflow fails |
+| `notify.recovery` | `true` | Post the first green after a failure |
+| `notify.pull-requests` | `false` | Include PR-triggered runs (red PRs are part of iterating, so they're excluded by default) |
+
+```yaml
+username: Hearth CI
+notify:
+  failure: true
+  recovery: true
+  pull-requests: false
+```
+
+## One-off embeds
 
 For notifications that aren't failure/recovery — release announcements,
-digests, deploy summaries — call the action directly:
+digests, deploy summaries — call the action directly from any step:
 
 ```yaml
 - name: Announce release on Discord
@@ -89,18 +105,22 @@ digests, deploy summaries — call the action directly:
 | `username` | no | webhook default | Bot name for this post |
 | `footer` | no | workflow name | |
 
-## Conventions
+## Guarantees
 
-- Colors: red `15548997` failure, green `5763719` recovery/success.
-- Webhook URLs are secrets, never in workflow files. The canonical secret
-  name is `TONK_DISCORD_WEBHOOK`.
-- A notification must never break the thing it reports on: unset webhook →
-  skip, Discord outage → `::warning::`, fork PR → skip.
+A notification must never break the thing it reports on:
 
-## Verifying a setup
+- **Unset webhook → silent skip.** Fork PRs don't receive secrets; their
+  builds must not fail because of a missing notification credential.
+- **Discord outage → warning, not failure.** Delivery errors emit a
+  `::warning::` annotation and exit 0.
+- **Untrusted text can't inject.** Titles, commit messages, and bodies flow
+  through env vars into `jq` — never through shell interpolation.
 
-Set `TONK_DISCORD_WEBHOOK` on this repo and dispatch the **Test embed** workflow;
-the embed landing in the channel proves the secret and the action end to end.
+## Versioning
+
+`v1` is a moving major tag; the reusable workflow and the composite action
+are tagged together and reference each other at the same major. Pin `@v1`,
+or a commit SHA if your repo hash-pins actions.
 
 ## Development
 
@@ -109,26 +129,18 @@ make tools   # one-time: install the toolchain (macOS/Homebrew)
 make check   # everything CI runs: lint + test
 ```
 
-`make lint` runs actionlint (workflow semantics), yamllint (style — this is
-the formatting gate; there's no YAML auto-formatter on purpose, they mangle
-comment-heavy workflow files), zizmor (workflow security), and shellcheck.
+`make lint` runs actionlint, yamllint (the formatting gate — there is
+deliberately no YAML auto-formatter; they mangle comment-heavy workflow
+files), zizmor, and shellcheck. `make test` runs a bats suite against the
+bash embedded in the YAML: scripts are extracted from the real files at test
+time (`scripts/extract-step.sh`) so tests can't drift from what ships, and
+network edges (curl, gh) are shimmed so assertions run against exact JSON
+payloads.
 
-`make test` runs a bats suite against the bash embedded in the YAML — the
-scripts are extracted from the real files at test time
-(`scripts/extract-step.sh`), so tests can't drift from what ships. Network
-edges (curl, gh) are shimmed; tests assert on the exact JSON payloads.
+To verify a live setup end to end, set `TONK_DISCORD_WEBHOOK` on this repo
+and dispatch the **Test embed** workflow.
 
-Dependabot keeps the SHA-pinned actions fresh (with a 7-day cooldown); a
-bump only reaches consumers when a new tag is cut.
+## License
 
-## Versioning
-
-`v1` is a moving major tag; the reusable workflow and the composite action
-are tagged together and reference each other at the same major. Pin `@v1`
-(or a commit SHA if your repo hash-pins actions).
-
-## Roadmap
-
-This repo is Phase 1 of tonk: the shared layer, no new product. A `tonk`
-binary (per-repo `tonk.yml` rules, digests, `init`/`send`/`sync`/`lint`) is
-gated on living with this layer first.
+[MIT](LICENSE). Named for the Tussle Tonks of Mechagon — a little machine
+that keeps fighting.
