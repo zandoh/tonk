@@ -41,6 +41,7 @@ No server, no database, nothing to host.
        types: [completed]
    permissions:
      actions: read # recovery detection reads run history
+     contents: read # reads .github/discord.yml — required on private repos
    jobs:
      notify:
        uses: zandoh/tonk/.github/workflows/notify.yml@v1
