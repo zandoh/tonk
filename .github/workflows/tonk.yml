@@ -1,0 +1,17 @@
+# tonk eats its own dog food: the same thin caller every consumer repo has.
+# This one tracks main so breakage shows up here before it ships to @v1.
+name: tonk
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  actions: read
+
+jobs:
+  notify:
+    uses: zandoh/tonk/.github/workflows/notify.yml@main
+    secrets:
+      webhook: ${{ secrets.DISCORD_WEBHOOK }}

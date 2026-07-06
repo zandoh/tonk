@@ -1,0 +1,7 @@
+# tonk notification personality — the same file every consumer repo carries.
+# All keys are optional; these are the defaults spelled out.
+username: tonk
+notify:
+  failure: true
+  recovery: true
+  pull-requests: false
