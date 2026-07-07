@@ -18,48 +18,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Pages races CI on the same push, so wait for the commit's checks and
-  # refuse to ship docs from a red build. Mirrors verify-ci in release.yml.
+  # Pages races CI on the same push, so the reusable gate waits for the
+  # commit's checks and refuses to ship docs from a red build.
   verify-ci:
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/verify-ci.yml
     permissions:
       checks: read
-    steps:
-      - name: Wait for green CI on this commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          required="lint test smoke"
-          deadline=$((SECONDS + 1200))
-          while true; do
-            runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100" \
-              --jq '[.check_runs[] | {name, status, conclusion, started_at}]')
-            pending=0 failed="" missing=""
-            for name in $required; do
-              row=$(jq --arg n "$name" \
-                '[.[] | select(.name == $n)] | sort_by(.started_at) | last' <<<"$runs")
-              if [ "$row" = "null" ]; then
-                missing="$missing $name"
-              elif [ "$(jq -r .status <<<"$row")" != "completed" ]; then
-                pending=1
-              elif [ "$(jq -r .conclusion <<<"$row")" != "success" ]; then
-                failed="$failed $name"
-              fi
-            done
-            if [ -n "$failed" ]; then
-              echo "::error::checks not green on $GITHUB_SHA:$failed"
-              exit 1
-            fi
-            if [ -z "$missing" ] && [ "$pending" -eq 0 ]; then
-              echo "All required checks are green on $GITHUB_SHA."
-              exit 0
-            fi
-            if [ "$SECONDS" -ge "$deadline" ]; then
-              echo "::error::timed out waiting for checks on $GITHUB_SHA (missing:${missing:- none})"
-              exit 1
-            fi
-            sleep 30
-          done
 
   deploy:
     needs: verify-ci

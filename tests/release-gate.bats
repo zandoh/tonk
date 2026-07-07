@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
-# Exercises the CI-gate and tag-move scripts embedded in release.yml and
-# pages.yml. Steps are extracted by name; renaming a step means updating this.
+# Exercises the CI-gate and tag-move scripts. The gate now lives in one
+# reusable workflow (verify-ci.yml) that release.yml and pages.yml both call;
+# the tag-move stays in release.yml. Steps are extracted by name; renaming a
+# step means updating this.
 #
 # Not covered on purpose: the pending/missing retry loop and the 20-minute
 # timeout branch depend on wall-clock SECONDS and a real `sleep 30`, so they
@@ -11,9 +13,8 @@ load helpers
 
 setup() {
   TMP="$(mktemp -d)"
-  extract rel_gate  .github/workflows/release.yml "Wait for green CI on the tagged commit"
-  extract pages_gate .github/workflows/pages.yml  "Wait for green CI on this commit"
-  extract movetag   .github/workflows/release.yml "Point the major tag at this release"
+  extract gate    .github/workflows/verify-ci.yml "Wait for green CI on this commit"
+  extract movetag .github/workflows/release.yml   "Point the major tag at this release"
   export GH_TOKEN=t GITHUB_REPOSITORY="zandoh/tonk" GITHUB_SHA="deadbeefcafe"
 }
 
@@ -27,16 +28,9 @@ green_checks() {
 JSON
 }
 
-@test "release gate passes when all required checks are green" {
+@test "gate passes when all required checks are green" {
   shim_gh_checks; green_checks
-  run bash "$TMP/rel_gate.sh"
-  [ "$status" -eq 0 ]
-  [[ "$output" == *"All required checks are green"* ]]
-}
-
-@test "pages gate passes when all required checks are green" {
-  shim_gh_checks; green_checks
-  run bash "$TMP/pages_gate.sh"
+  run bash "$TMP/gate.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"All required checks are green"* ]]
 }
@@ -48,7 +42,7 @@ JSON
  {"name":"test","status":"completed","conclusion":"failure","started_at":"2026-07-07T10:00:00Z"},
  {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
 JSON
-  run bash "$TMP/rel_gate.sh"
+  run bash "$TMP/gate.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"checks not green"* ]]
   [[ "$output" == *"test"* ]]
@@ -61,7 +55,7 @@ JSON
  {"name":"test","status":"completed","conclusion":"cancelled","started_at":"2026-07-07T10:00:00Z"},
  {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
 JSON
-  run bash "$TMP/rel_gate.sh"
+  run bash "$TMP/gate.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"checks not green"* ]]
 }
@@ -76,7 +70,7 @@ JSON
  {"name":"test","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
  {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
 JSON
-  run bash "$TMP/rel_gate.sh"
+  run bash "$TMP/gate.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"checks not green"* ]]
   [[ "$output" == *"lint"* ]]
@@ -92,7 +86,7 @@ JSON
  {"name":"test","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
  {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
 JSON
-  run bash "$TMP/rel_gate.sh"
+  run bash "$TMP/gate.sh"
   [ "$status" -eq 0 ]
   [[ "$output" == *"All required checks are green"* ]]
 }
