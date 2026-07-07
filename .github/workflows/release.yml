@@ -1,31 +1,35 @@
-# Deploys the static docs site (docs/) to GitHub Pages.
+# Moves the major tag (v2) after a release tag proves itself green.
 #
-# One-time setup: Settings → Pages → Source → "GitHub Actions".
-name: Pages
+# The major tag is the action's real deploy: every consumer pins @v2, so a
+# bad move breaks the whole fleet at once. Pushing v2.x.y lands here, which
+# waits for the tagged commit's CI checks and only then points the major
+# tag at it. Never move the major tag by hand.
+#
+# No recursion: the API ref update fires a push event for the major tag
+# (no dots, doesn't match v*.*.*), and GITHUB_TOKEN pushes don't trigger
+# workflows anyway.
+name: Release
 
 on:
   push:
-    branches: [main]
-    paths:
-      - docs/**
-      - .github/workflows/pages.yml
-  workflow_dispatch:
+    tags: ["v*.*.*"]
 
 permissions: {}
 
 concurrency:
-  group: pages
+  group: release
   cancel-in-progress: false
 
 jobs:
-  # Pages races CI on the same push, so wait for the commit's checks and
-  # refuse to ship docs from a red build. Mirrors verify-ci in release.yml.
+  # A release tag usually lands moments after the commit itself, so the CI
+  # checks may still be running: poll until they all conclude. A commit CI
+  # never saw (no check runs after the timeout) does not release.
   verify-ci:
     runs-on: ubuntu-latest
     permissions:
       checks: read
     steps:
-      - name: Wait for green CI on this commit
+      - name: Wait for green CI on the tagged commit
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -60,27 +64,22 @@ jobs:
             sleep 30
           done
 
-  deploy:
+  move-major-tag:
     needs: verify-ci
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      pages: write # deploy to Pages
-      id-token: write # OIDC token that deploy-pages verifies
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: docs
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
+      - name: Point the major tag at this release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          major=${GITHUB_REF_NAME%%.*}
+          if gh api --silent "repos/$GITHUB_REPOSITORY/git/refs/tags/$major" 2>/dev/null; then
+            gh api --silent -X PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$major" \
+              -f sha="$GITHUB_SHA" -F force=true
+          else
+            gh api --silent -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$major" -f sha="$GITHUB_SHA"
+          fi
+          echo "$major -> $GITHUB_SHA"
