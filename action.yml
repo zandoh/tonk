@@ -1,7 +1,10 @@
-name: Discord notify
+name: tonk Discord notify
 description: >-
   Post a status embed to a Discord webhook. Skips silently when the webhook
   is unset (fork-safe) and warns instead of failing when Discord is down.
+branding:
+  icon: bell
+  color: green
 
 inputs:
   webhook-url:

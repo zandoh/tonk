@@ -1,12 +1,12 @@
 #!/usr/bin/env bats
-# Exercises the script embedded in actions/discord-notify/action.yml —
+# Exercises the script embedded in action.yml —
 # the payload builder and its guard rails.
 
 load helpers
 
 setup() {
   TMP="$(mktemp -d)"
-  extract send actions/discord-notify/action.yml
+  extract send action.yml
   shim_curl
 
   # Baseline env as the runner would provide it.

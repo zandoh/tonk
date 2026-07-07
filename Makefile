@@ -12,7 +12,7 @@ lint: ## actionlint + yamllint + zizmor + shellcheck on embedded/repo scripts
 	actionlint
 	yamllint --strict .
 	zizmor --no-progress .
-	./scripts/extract-step.sh actions/discord-notify/action.yml | shellcheck -s bash -
+	./scripts/extract-step.sh action.yml | shellcheck -s bash -
 	shellcheck scripts/*.sh
 
 test: ## bats suite for the scripts embedded in the YAML

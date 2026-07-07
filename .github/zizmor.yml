@@ -2,8 +2,8 @@ rules:
   unpinned-uses:
     config:
       policies:
-        # Self-references ride this repo's own tags on purpose: notify.yml@v1
-        # must use discord-notify@v1, and the dogfood caller tracks @main.
+        # Self-references ride this repo's own tags on purpose: notify.yml@v2
+        # must use the root action at @v2, and the dogfood caller tracks @main.
         "zandoh/*": ref-pin
         "*": hash-pin
   dangerous-triggers:

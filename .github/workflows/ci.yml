@@ -54,7 +54,7 @@ jobs:
           persist-credentials: false
 
       - name: Unset webhook must skip, not fail
-        uses: ./actions/discord-notify
+        uses: ./
         with:
           webhook-url: ""
           status: success

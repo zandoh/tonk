@@ -30,7 +30,7 @@ Add `.github/workflows/tonk.yml` — list the workflows to watch by name
       contents: read # reads .github/discord.yml — required on private repos
     jobs:
       notify:
-        uses: zandoh/tonk/.github/workflows/notify.yml@v1
+        uses: zandoh/tonk/.github/workflows/notify.yml@v2
         secrets:
           webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
 
@@ -54,7 +54,7 @@ Every key is optional:
 For releases, digests, or deploy summaries, call the composite action from
 any step:
 
-    - uses: zandoh/tonk/actions/discord-notify@v1
+    - uses: zandoh/tonk@v2
       with:
         webhook-url: ${{ secrets.TONK_DISCORD_WEBHOOK }}
         title: 🚀 my-tool v1.2.3 released
@@ -71,7 +71,7 @@ through env vars into jq (no shell interpolation).
 
 ## Versioning
 
-Pin `@v1` (moving major tag; workflow and action are tagged together), or a
+Pin `@v2` (moving major tag; workflow and action are tagged together), or a
 commit SHA for hash-pinned repos.
 
 ## Links

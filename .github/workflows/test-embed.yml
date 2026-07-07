@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
 
       - name: Send test embed
-        uses: ./actions/discord-notify
+        uses: ./
         with:
           webhook-url: ${{ secrets.TONK_DISCORD_WEBHOOK }}
           status: ${{ inputs.status }}

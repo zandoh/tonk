@@ -20,7 +20,7 @@ No server, no database, nothing to host.
 
 | Piece | Purpose |
 |---|---|
-| [`actions/discord-notify`](actions/discord-notify/action.yml) | Composite action that posts one embed, with guard rails built in |
+| [`action.yml`](action.yml) (repo root) | Composite action that posts one embed, with guard rails built in |
 | [`.github/workflows/notify.yml`](.github/workflows/notify.yml) | Reusable workflow: failure alerts + back-to-green recovery detection for `workflow_run` events |
 
 ## Quick start
@@ -46,7 +46,7 @@ No server, no database, nothing to host.
      contents: read # reads .github/discord.yml — required on private repos
    jobs:
      notify:
-       uses: zandoh/tonk/.github/workflows/notify.yml@v1
+       uses: zandoh/tonk/.github/workflows/notify.yml@v2
        secrets:
          webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
    ```
@@ -86,7 +86,7 @@ digests, deploy summaries — call the action directly from any step:
 
 ```yaml
 - name: Announce release on Discord
-  uses: zandoh/tonk/actions/discord-notify@v1
+  uses: zandoh/tonk@v2
   with:
     webhook-url: ${{ secrets.TONK_DISCORD_WEBHOOK }}
     title: 🚀 my-tool v1.2.3 released
@@ -121,9 +121,10 @@ A notification must never break the thing it reports on:
 
 ## Versioning
 
-`v1` is a moving major tag; the reusable workflow and the composite action
-are tagged together and reference each other at the same major. Pin `@v1`,
-or a commit SHA if your repo hash-pins actions.
+`v2` is a moving major tag; the reusable workflow and the composite action
+are tagged together and reference each other at the same major. Pin `@v2`,
+or a commit SHA if your repo hash-pins actions. (`v1` tags still resolve to
+the old layout, where the action lived at `actions/discord-notify`.)
 
 ## Development
 
