@@ -7,6 +7,7 @@
 <meta name="description" content="Failure alerts and once-per-incident back-to-green recoveries for GitHub Actions, posted to Discord. No server, no database, nothing to host.">
 <meta property="og:title" content="tonk — Discord notifications for GitHub Actions">
 <meta property="og:description" content="One ping when it breaks. One when it's fixed. No server, no database, nothing to host.">
+<meta property="og:image" content="https://zandoh.github.io/tonk/assets/tonk.png">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -15,13 +16,14 @@
   "applicationCategory": "DeveloperApplication",
   "description": "Shared Discord notifications for GitHub Actions: failure alerts, once-per-incident back-to-green recoveries, and a reusable embed action with guard rails. Stateless, nothing to host.",
   "url": "https://zandoh.github.io/tonk/",
+  "image": "https://zandoh.github.io/tonk/assets/tonk.png",
   "codeRepository": "https://github.com/zandoh/tonk",
   "license": "https://opensource.org/licenses/MIT",
   "operatingSystem": "GitHub Actions",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 }
 </script>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231A1B21'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%2357F287' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23ED4245'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5.5' fill='%232aa55c'/%3E%3Cg transform='translate(0 -1.9)'%3E%3Cg fill='none' stroke='%23fff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4.2' y='14.4' width='15' height='4.8' rx='2.4'/%3E%3Cpath d='M8 14.4 v-1 a3.6 3.6 0 0 1 7.2 0 v1'/%3E%3Cpath d='M14.9 10.9 L19.4 8.7'/%3E%3C/g%3E%3Cg fill='%23fff'%3E%3Ccircle cx='7.7' cy='16.8' r='0.95'/%3E%3Ccircle cx='11.7' cy='16.8' r='0.95'/%3E%3Ccircle cx='15.7' cy='16.8' r='0.95'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -210,6 +212,7 @@
   .dc-avatar {
     flex: none; width: 40px; height: 40px; border-radius: 50%;
     background: #1E1F24; display: grid; place-items: center;
+    overflow: hidden; line-height: 0;
   }
   .dc-meta { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .dc-name { font-weight: 600; color: #F2F3F5; }
@@ -365,10 +368,26 @@
 <header>
   <div class="wrap nav">
     <a class="wordmark" href="#">
-      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
-        <rect width="32" height="32" rx="7" fill="#23252E"/>
-        <circle cx="16" cy="16" r="9" fill="none" stroke="#57F287" stroke-width="3"/>
-        <circle cx="16" cy="16" r="3" fill="#ED4245"/>
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+        <defs>
+          <linearGradient id="tkbg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#37b968"/>
+            <stop offset="1" stop-color="#1f8f4a"/>
+          </linearGradient>
+        </defs>
+        <rect width="24" height="24" rx="5.5" fill="url(#tkbg)"/>
+        <g transform="translate(0 -1.9)">
+          <g fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.2" y="14.4" width="15" height="4.8" rx="2.4"/>
+            <path d="M8 14.4 v-1 a3.6 3.6 0 0 1 7.2 0 v1"/>
+            <path d="M14.9 10.9 L19.4 8.7"/>
+          </g>
+          <g fill="#fff">
+            <circle cx="7.7" cy="16.8" r="0.95"/>
+            <circle cx="11.7" cy="16.8" r="0.95"/>
+            <circle cx="15.7" cy="16.8" r="0.95"/>
+          </g>
+        </g>
       </svg>
       tonk
     </a>
@@ -415,10 +434,10 @@
         <div class="dc-header"><span class="dc-hash">#</span> build-status</div>
         <div class="dc-msg" style="--d:1s">
           <span class="dc-avatar" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="#57F287" stroke-width="3"/><circle cx="16" cy="16" r="3.5" fill="#ED4245"/></svg>
+            <svg width="40" height="40" viewBox="0 0 24 24"><rect width="24" height="24" fill="url(#tkbg)"/><g transform="translate(12 12.5) scale(0.78) translate(-11.8 -13.9)"><g fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.2" y="14.4" width="15" height="4.8" rx="2.4"/><path d="M8 14.4 v-1 a3.6 3.6 0 0 1 7.2 0 v1"/><path d="M14.9 10.9 L19.4 8.7"/></g><g fill="#fff"><circle cx="7.7" cy="16.8" r="0.95"/><circle cx="11.7" cy="16.8" r="0.95"/><circle cx="15.7" cy="16.8" r="0.95"/></g></g></svg>
           </span>
           <div class="dc-body">
-            <div class="dc-meta"><span class="dc-name">Hearth CI</span><span class="dc-badge">APP</span><span class="dc-time">Today at 09:41</span></div>
+            <div class="dc-meta"><span class="dc-name">tonk</span><span class="dc-badge">APP</span><span class="dc-time">Today at 09:41</span></div>
             <div class="dc-embed fail">
               <div class="dc-title">❌ CI failed on main</div>
               <div class="dc-desc">fix: handle empty webhook payload (<code>3f2c1a8</code>)</div>
@@ -428,10 +447,10 @@
         </div>
         <div class="dc-msg" style="--d:1.9s">
           <span class="dc-avatar" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="#57F287" stroke-width="3"/><circle cx="16" cy="16" r="3.5" fill="#ED4245"/></svg>
+            <svg width="40" height="40" viewBox="0 0 24 24"><rect width="24" height="24" fill="url(#tkbg)"/><g transform="translate(12 12.5) scale(0.78) translate(-11.8 -13.9)"><g fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.2" y="14.4" width="15" height="4.8" rx="2.4"/><path d="M8 14.4 v-1 a3.6 3.6 0 0 1 7.2 0 v1"/><path d="M14.9 10.9 L19.4 8.7"/></g><g fill="#fff"><circle cx="7.7" cy="16.8" r="0.95"/><circle cx="11.7" cy="16.8" r="0.95"/><circle cx="15.7" cy="16.8" r="0.95"/></g></g></svg>
           </span>
           <div class="dc-body">
-            <div class="dc-meta"><span class="dc-name">Hearth CI</span><span class="dc-badge">APP</span><span class="dc-time">Today at 10:17</span></div>
+            <div class="dc-meta"><span class="dc-name">tonk</span><span class="dc-badge">APP</span><span class="dc-time">Today at 10:17</span></div>
             <div class="dc-embed ok">
               <div class="dc-title">✅ CI back to green on main</div>
               <div class="dc-desc">fix: quote the payload before posting (<code>8b41d2e</code>)</div>
@@ -592,10 +611,10 @@
       <div class="discord" style="border: 1px solid var(--line); border-radius: 10px; max-width: 560px; margin: 24px 0;">
         <div class="dc-msg" style="--d:0s">
           <span class="dc-avatar" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="#57F287" stroke-width="3"/><circle cx="16" cy="16" r="3.5" fill="#ED4245"/></svg>
+            <svg width="40" height="40" viewBox="0 0 24 24"><rect width="24" height="24" fill="url(#tkbg)"/><g transform="translate(12 12.5) scale(0.78) translate(-11.8 -13.9)"><g fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.2" y="14.4" width="15" height="4.8" rx="2.4"/><path d="M8 14.4 v-1 a3.6 3.6 0 0 1 7.2 0 v1"/><path d="M14.9 10.9 L19.4 8.7"/></g><g fill="#fff"><circle cx="7.7" cy="16.8" r="0.95"/><circle cx="11.7" cy="16.8" r="0.95"/><circle cx="15.7" cy="16.8" r="0.95"/></g></g></svg>
           </span>
           <div class="dc-body">
-            <div class="dc-meta"><span class="dc-name">my-tool</span><span class="dc-badge">APP</span><span class="dc-time">Today at 16:20</span></div>
+            <div class="dc-meta"><span class="dc-name">tonk</span><span class="dc-badge">APP</span><span class="dc-time">Today at 16:20</span></div>
             <div class="dc-embed" style="border-left-color:#5865F2">
               <div class="dc-title">🚀 my-tool v1.2.3 released</div>
               <div class="dc-desc">Adds retry with backoff, fixes the flaky
