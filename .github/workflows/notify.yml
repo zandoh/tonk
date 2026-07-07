@@ -109,8 +109,13 @@ jobs:
           if [ -z "$BRANCH" ]; then
             echo "No head branch (tag-triggered run?); skipping recovery check."
           else
+            # per_page=100 is the GitHub API maximum. The previous run is the
+            # newest completed run below this one; if >100 completed runs on
+            # this branch are newer than the current run, it falls off the page
+            # and a recovery is missed. Rare (delayed workflow_run under heavy
+            # volume); full correctness would need pagination.
             prev=$(gh api -X GET "repos/${REPO}/actions/workflows/${WF_ID}/runs" \
-              -f branch="$BRANCH" -f status=completed -F per_page=50 \
+              -f branch="$BRANCH" -f status=completed -F per_page=100 \
               | jq -r --argjson n "$RUN_NUMBER" \
                 '[.workflow_runs[] | select(.run_number < $n)]
                  | sort_by(.run_number) | last | .conclusion // empty')
