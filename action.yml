@@ -105,7 +105,9 @@ runs:
             }]
           }')
 
-        # A Discord outage shouldn't flip a green run red: warn, don't fail.
-        curl -sS --fail-with-body -X POST -H "Content-Type: application/json" \
+        # A Discord outage (or a hung endpoint) shouldn't flip a green run
+        # red or pin a runner: cap the request, then warn — don't fail.
+        curl -sS --fail-with-body --connect-timeout 10 --max-time 30 \
+          -X POST -H "Content-Type: application/json" \
           -d "$payload" "$WEBHOOK_URL" \
           || echo "::warning::Discord notification failed"

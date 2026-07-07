@@ -131,3 +131,8 @@ teardown() { rm -rf "$TMP"; }
   [ "$status" -eq 0 ]
   jq -e '.embeds[0].description | contains("$(rm -rf /)")' <<<"$output"
 }
+
+@test "the webhook post is bounded by a timeout" {
+  run grep -- "--max-time" "$TMP/send.sh"
+  [ "$status" -eq 0 ]
+}
