@@ -40,3 +40,30 @@ SHIM
   chmod +x "$TMP/bin/gh"
   PATH="$TMP/bin:$PATH"
 }
+
+# A gh that serves canned check-runs JSON from $TMP/checks.json and ignores
+# the URL/--jq args (the script's --jq projection is baked into the file).
+shim_gh_checks() {
+  mkdir -p "$TMP/bin"
+  cat > "$TMP/bin/gh" <<SHIM
+#!/usr/bin/env bash
+cat "$TMP/checks.json"
+SHIM
+  chmod +x "$TMP/bin/gh"
+  PATH="$TMP/bin:$PATH"
+}
+
+# A gh for the tag-move script. Records every invocation to $TMP/gh.log.
+# The existence-check GET (no -X flag) exits 0 when $TMP/tag-exists is present,
+# else 1. Any mutating call (-X PATCH/POST) logs and exits 0.
+shim_gh_tag() {
+  mkdir -p "$TMP/bin"
+  cat > "$TMP/bin/gh" <<SHIM
+#!/usr/bin/env bash
+echo "\$*" >> "$TMP/gh.log"
+for a in "\$@"; do [ "\$a" = "-X" ] && exit 0; done
+[ -f "$TMP/tag-exists" ] && exit 0 || exit 1
+SHIM
+  chmod +x "$TMP/bin/gh"
+  PATH="$TMP/bin:$PATH"
+}
