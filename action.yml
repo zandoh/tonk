@@ -30,7 +30,10 @@ inputs:
       (failure 15548997, success 5763719, otherwise 3447003)
     required: false
   username:
-    description: Bot username for this post; empty keeps the webhook's default
+    description: Bot username for this post; empty means the tonk brand default
+    required: false
+  avatar-url:
+    description: Bot avatar image URL for this post; empty means the tonk icon
     required: false
   footer:
     description: Footer text; defaults to the workflow name
@@ -49,6 +52,7 @@ runs:
         URL: ${{ inputs.url }}
         COLOR: ${{ inputs.color }}
         BOT_USERNAME: ${{ inputs.username }}
+        BOT_AVATAR_URL: ${{ inputs.avatar-url }}
         FOOTER: ${{ inputs.footer }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         REPO: ${{ github.repository }}
@@ -77,14 +81,20 @@ runs:
           DESCRIPTION="$REPO · \`$REF_NAME\` · \`${SHA:0:7}\`"$'\n'"$FIRST_LINE"
         fi
 
+        # Brand defaults: posts show up as "tonk" with the tonk icon unless
+        # the caller overrides either one.
+        BOT_USERNAME="${BOT_USERNAME:-tonk}"
+        BOT_AVATAR_URL="${BOT_AVATAR_URL:-https://zandoh.github.io/tonk/assets/tonk.png}"
+
         payload=$(jq -n \
           --arg title "${EMOJI}${TITLE}" \
           --arg url "${URL:-$RUN_URL}" \
           --arg desc "$DESCRIPTION" \
           --arg footer "${FOOTER:-$WORKFLOW}" \
           --arg username "$BOT_USERNAME" \
+          --arg avatar "$BOT_AVATAR_URL" \
           --argjson color "$COLOR" \
-          '(if $username == "" then {} else {username: $username} end) + {
+          '{username: $username, avatar_url: $avatar} + {
             embeds: [{
               title: ($title | .[0:256]),
               url: $url,

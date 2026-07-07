@@ -66,13 +66,15 @@ Every key is optional.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `username` | webhook default | Bot name shown on posts |
+| `username` | `tonk` | Bot name shown on posts |
+| `avatar` | the [tonk icon](https://zandoh.github.io/tonk/assets/tonk.png) | Bot avatar image URL |
 | `notify.failure` | `true` | Post when a watched workflow fails |
 | `notify.recovery` | `true` | Post the first green after a failure |
 | `notify.pull-requests` | `false` | Include PR-triggered runs (red PRs are part of iterating, so they're excluded by default) |
 
 ```yaml
 username: Hearth CI
+avatar: https://example.com/hearth.png
 notify:
   failure: true
   recovery: true
@@ -105,7 +107,8 @@ digests, deploy summaries — call the action directly from any step:
 | `description` | no | `repo · branch · sha` + commit subject | Truncated to 4096 chars |
 | `url` | no | current run URL | Link target for the title |
 | `color` | no | from `status` | Decimal; failure `15548997`, success `5763719`, otherwise `3447003` |
-| `username` | no | webhook default | Bot name for this post |
+| `username` | no | `tonk` | Bot name for this post |
+| `avatar-url` | no | the [tonk icon](https://zandoh.github.io/tonk/assets/tonk.png) | Bot avatar image URL for this post |
 | `footer` | no | workflow name | |
 
 ## Guarantees

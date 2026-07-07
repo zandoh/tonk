@@ -11,7 +11,7 @@ setup() {
 
   # Baseline env as the runner would provide it.
   export WEBHOOK_URL="https://example.invalid/hook"
-  export STATUS="" TITLE="a title" DESCRIPTION="" URL="" COLOR="" BOT_USERNAME="" FOOTER=""
+  export STATUS="" TITLE="a title" DESCRIPTION="" URL="" COLOR="" BOT_USERNAME="" BOT_AVATAR_URL="" FOOTER=""
   export RUN_URL="https://github.com/zandoh/x/actions/runs/1"
   export REPO="zandoh/x" REF_NAME="main" SHA="0123456789abcdef" WORKFLOW="CI"
   export COMMIT_MSG=$'feat: subject line\nbody that must not appear'
@@ -56,14 +56,18 @@ teardown() { rm -rf "$TMP"; }
   jq -e '.embeds[0].color == 15548997' <<<"$output"
 }
 
-@test "username is included when set and omitted when empty" {
+@test "empty username and avatar fall back to the tonk brand" {
+  run bash "$TMP/send.sh"
+  jq -e '.username == "tonk"' <<<"$output"
+  jq -e '.avatar_url == "https://zandoh.github.io/tonk/assets/tonk.png"' <<<"$output"
+}
+
+@test "explicit username and avatar override the brand default" {
   export BOT_USERNAME="Hearth CI"
+  export BOT_AVATAR_URL="https://example.invalid/hearth.png"
   run bash "$TMP/send.sh"
   jq -e '.username == "Hearth CI"' <<<"$output"
-
-  export BOT_USERNAME=""
-  run bash "$TMP/send.sh"
-  jq -e 'has("username") | not' <<<"$output"
+  jq -e '.avatar_url == "https://example.invalid/hearth.png"' <<<"$output"
 }
 
 @test "default description is repo · branch · short sha + commit subject" {

@@ -59,11 +59,13 @@ jobs:
           SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           username=""
+          avatar=""
           failure=true
           recovery=true
           prs=false
           if [ -f "$CONFIG_PATH" ]; then
             username=$(yq '.username // ""' "$CONFIG_PATH")
+            avatar=$(yq '.avatar // ""' "$CONFIG_PATH")
             # yq's // alternative operator swallows explicit false, so compare
             if [ "$(yq '.notify.failure' "$CONFIG_PATH")" = "false" ]; then failure=false; fi
             if [ "$(yq '.notify.recovery' "$CONFIG_PATH")" = "false" ]; then recovery=false; fi
@@ -83,6 +85,7 @@ jobs:
 
           {
             echo "username=$username"
+            echo "avatar=$avatar"
             echo "failure=$failure"
             echo "recovery=$recovery"
             echo "fail_title=${WF_NAME} failed${where}"
@@ -134,6 +137,7 @@ jobs:
           description: ${{ steps.cfg.outputs.desc }}
           url: ${{ github.event.workflow_run.html_url }}
           username: ${{ steps.cfg.outputs.username }}
+          avatar-url: ${{ steps.cfg.outputs.avatar }}
           footer: ${{ github.event.workflow_run.name }}
 
       - name: Post recovery to Discord
@@ -146,4 +150,5 @@ jobs:
           description: ${{ steps.cfg.outputs.desc }}
           url: ${{ github.event.workflow_run.html_url }}
           username: ${{ steps.cfg.outputs.username }}
+          avatar-url: ${{ steps.cfg.outputs.avatar }}
           footer: ${{ github.event.workflow_run.name }}

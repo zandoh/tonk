@@ -43,7 +43,8 @@ repeat failures post nothing. PR-triggered runs are excluded by default.
 `.github/discord.yml` in the calling repo, read from the default branch.
 Every key is optional:
 
-    username: Hearth CI       # bot name shown on posts
+    username: Hearth CI       # bot name shown on posts (default: tonk)
+    avatar: https://example.com/hearth.png  # bot avatar URL (default: the tonk icon)
     notify:
       failure: true           # post when a watched workflow fails
       recovery: true          # post the first green after a failure
@@ -62,7 +63,8 @@ any step:
         url: https://example.com/release-notes          # optional
         status: success        # optional: success|failure sets emoji + color
         color: "5793266"       # optional: decimal, overrides status default
-        username: Releases     # optional
+        username: Releases     # optional, defaults to "tonk"
+        avatar-url: https://example.com/icon.png  # optional, defaults to the tonk icon
         footer: Release        # optional
 
 Guard rails: an empty webhook-url skips silently (fork-safe), Discord

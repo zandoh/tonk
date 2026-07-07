@@ -28,14 +28,16 @@ run_cfg() {
 @test "missing config file yields defaults" {
   CONFIG_PATH="$TMP/nope.yml" run_cfg
   [ "$(out username)" = "" ]
+  [ "$(out avatar)" = "" ]
   [ "$(out failure)" = "true" ]
   [ "$(out recovery)" = "true" ]
 }
 
-@test "username and titles are built from config and event" {
-  printf 'username: Hearth CI\n' > "$TMP/discord.yml"
+@test "username, avatar, and titles are built from config and event" {
+  printf 'username: Hearth CI\navatar: https://example.invalid/hearth.png\n' > "$TMP/discord.yml"
   run_cfg
   [ "$(out username)" = "Hearth CI" ]
+  [ "$(out avatar)" = "https://example.invalid/hearth.png" ]
   [ "$(out fail_title)" = "CI failed on main" ]
   [ "$(out ok_title)" = "CI back to green on main" ]
   [ "$(out desc)" = 'feat: subject (`0123456`)' ]
