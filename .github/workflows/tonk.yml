@@ -1,10 +1,10 @@
 # tonk eats its own dog food: the same thin caller every consumer repo has.
-# This one tracks main so breakage shows up here before it ships to @v1.
+# This one tracks main so breakage shows up here before it ships to @v2.
 name: tonk
 
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Pages, Release]
     types: [completed]
 
 permissions:
