@@ -21,9 +21,9 @@ teardown() { rm -rf "$TMP"; }
 
 green_checks() {
   cat > "$TMP/checks.json" <<'JSON'
-[{"name":"lint","status":"completed","conclusion":"success"},
- {"name":"test","status":"completed","conclusion":"success"},
- {"name":"smoke","status":"completed","conclusion":"success"}]
+[{"name":"lint","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"test","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
 JSON
 }
 
@@ -44,9 +44,9 @@ JSON
 @test "release gate fails fast when a required check failed" {
   shim_gh_checks
   cat > "$TMP/checks.json" <<'JSON'
-[{"name":"lint","status":"completed","conclusion":"success"},
- {"name":"test","status":"completed","conclusion":"failure"},
- {"name":"smoke","status":"completed","conclusion":"success"}]
+[{"name":"lint","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"test","status":"completed","conclusion":"failure","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
 JSON
   run bash "$TMP/rel_gate.sh"
   [ "$status" -eq 1 ]
@@ -57,13 +57,44 @@ JSON
 @test "release gate treats a non-success conclusion as not green" {
   shim_gh_checks
   cat > "$TMP/checks.json" <<'JSON'
-[{"name":"lint","status":"completed","conclusion":"success"},
- {"name":"test","status":"completed","conclusion":"cancelled"},
- {"name":"smoke","status":"completed","conclusion":"success"}]
+[{"name":"lint","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"test","status":"completed","conclusion":"cancelled","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
 JSON
   run bash "$TMP/rel_gate.sh"
   [ "$status" -eq 1 ]
   [[ "$output" == *"checks not green"* ]]
+}
+
+@test "release gate honors the newest run when a check was re-run" {
+  shim_gh_checks
+  # Newest entry (failure@10:30) is FIRST, not last in array order, so the old
+  # `| last` code would pick the stale success and this test would not fail.
+  cat > "$TMP/checks.json" <<'JSON'
+[{"name":"lint","status":"completed","conclusion":"failure","started_at":"2026-07-07T10:30:00Z"},
+ {"name":"lint","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"test","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
+JSON
+  run bash "$TMP/rel_gate.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"checks not green"* ]]
+  [[ "$output" == *"lint"* ]]
+}
+
+@test "release gate honors a newer success over an older failure" {
+  shim_gh_checks
+  # Newest entry (success@10:30) is FIRST, not last, so the direction of the
+  # sort is what makes this pass — old `| last` would pick the stale failure.
+  cat > "$TMP/checks.json" <<'JSON'
+[{"name":"lint","status":"completed","conclusion":"success","started_at":"2026-07-07T10:30:00Z"},
+ {"name":"lint","status":"completed","conclusion":"failure","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"test","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"},
+ {"name":"smoke","status":"completed","conclusion":"success","started_at":"2026-07-07T10:00:00Z"}]
+JSON
+  run bash "$TMP/rel_gate.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"All required checks are green"* ]]
 }
 
 @test "existing major tag is force-updated via PATCH" {
