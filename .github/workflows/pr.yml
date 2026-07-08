@@ -1,0 +1,131 @@
+# Reusable pull-request lifecycle notifications.
+#
+# Posts a tonk-branded embed when a PR is opened, reopened, merged, or closed
+# without merging — the firehose Discord's first-party GitHub app owns, but
+# under the tonk name/icon and this repo's .github/discord.yml personality.
+# Call it from a thin workflow in the consuming repo:
+#
+#   on:
+#     pull_request:
+#       types: [opened, reopened, closed]
+#   permissions:
+#     contents: read   # reads .github/discord.yml from the base ref
+#   jobs:
+#     notify:
+#       uses: zandoh/tonk/.github/workflows/pr.yml@v2
+#       secrets:
+#         webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
+#
+# Draft PRs are skipped on open/reopen (a draft isn't ready to announce);
+# closing one still posts, since that's a real end of the PR's life. Turn the
+# whole stream off with `notify.pull-request-activity: false` in discord.yml.
+name: Discord PR notify
+
+on:
+  workflow_call:
+    inputs:
+      config-path:
+        description: Path to the caller's Discord config file
+        type: string
+        required: false
+        default: .github/discord.yml
+    secrets:
+      webhook:
+        description: Discord webhook URL; when unset every post skips silently
+        required: false
+
+jobs:
+  notify:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # Read config from the base ref, not the PR head: the personality file
+      # is the target repo's, and a PR must not rewrite its own notification
+      # rules. Nothing here executes checked-out code — it only reads YAML.
+      - name: Check out caller config
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: .github
+          persist-credentials: false
+
+      - name: Read config and build the embed
+        id: cfg
+        env:
+          CONFIG_PATH: ${{ inputs.config-path }}
+          ACTION: ${{ github.event.action }}
+          MERGED: ${{ github.event.pull_request.merged }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+        run: |
+          username=""
+          avatar=""
+          activity=true
+          if [ -f "$CONFIG_PATH" ]; then
+            username=$(yq '.username // ""' "$CONFIG_PATH")
+            avatar=$(yq '.avatar // ""' "$CONFIG_PATH")
+            # yq's // alternative swallows an explicit false, so compare instead
+            if [ "$(yq '.notify.pull-request-activity' "$CONFIG_PATH")" = "false" ]; then
+              activity=false
+            fi
+          fi
+
+          # PR titles are single-line, but strip CR/LF defensively so attacker
+          # text can never inject extra GITHUB_OUTPUT keys.
+          PR_TITLE=$(printf '%s' "$PR_TITLE" | tr -d '\r\n')
+
+          post=true
+          if [ "$activity" = "false" ]; then post=false; fi
+
+          # A draft isn't an announcement yet; closing a draft still is.
+          case "$ACTION" in
+            opened | reopened)
+              if [ "$DRAFT" = "true" ]; then post=false; fi ;;
+          esac
+
+          case "$ACTION" in
+            opened)   verb=opened;   emoji="🔀"; color=3066993 ;;   # green
+            reopened) verb=reopened; emoji="🔁"; color=3447003 ;;   # blue
+            closed)
+              if [ "$MERGED" = "true" ]; then
+                verb=merged; emoji="🟣"; color=10181046           # purple
+              else
+                verb=closed; emoji="🚫"; color=10070709           # grey
+              fi ;;
+            *) post=false; verb="$ACTION"; emoji=""; color=3447003 ;;
+          esac
+
+          where=""
+          if [ -n "$BASE" ] && [ -n "$HEAD" ]; then
+            where=" · \`$HEAD\` → \`$BASE\`"
+          fi
+
+          {
+            echo "post=$post"
+            echo "username=$username"
+            echo "avatar=$avatar"
+            echo "color=$color"
+            echo "url=$PR_URL"
+            echo "title=${emoji} PR #${NUMBER} ${verb}: ${PR_TITLE}"
+            echo "desc=${verb} by @${AUTHOR}${where}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post PR event to Discord
+        if: steps.cfg.outputs.post == 'true'
+        uses: zandoh/tonk@v2
+        with:
+          webhook-url: ${{ secrets.webhook }}
+          title: ${{ steps.cfg.outputs.title }}
+          description: ${{ steps.cfg.outputs.desc }}
+          url: ${{ steps.cfg.outputs.url }}
+          color: ${{ steps.cfg.outputs.color }}
+          username: ${{ steps.cfg.outputs.username }}
+          avatar-url: ${{ steps.cfg.outputs.avatar }}
+          footer: ${{ github.repository }}
