@@ -494,6 +494,13 @@
           for anything that isn&rsquo;t failure or recovery: release announcements,
           digests, deploy summaries. The same guard rails apply.</p>
         </div>
+        <div class="card">
+          <h3>Pull-request activity</h3>
+          <p><code>pr.yml</code> — a second reusable workflow that posts opened,
+          reopened, merged, and closed embeds under the tonk name and icon.
+          Everything Discord&rsquo;s first-party GitHub app sends, minus the
+          &ldquo;GitHub&rdquo; branding.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -554,6 +561,38 @@
         That&rsquo;s it. Failures in the watched workflows post a red embed; the first
         green run after a failure posts a <em>back to green</em> — and only the first.
       </p>
+
+      <p class="prose">
+        Want pull-request activity too? Add a <code>pull_request</code> trigger
+        and a second job to the <em>same</em> <code>tonk.yml</code> — opened,
+        reopened, merged, and closed each post a tonk-branded embed, so you can
+        retire Discord&rsquo;s first-party GitHub app. Each event runs only its
+        matching job:
+      </p>
+      <div class="code">
+        <div class="code-bar"><span>.github/workflows/tonk.yml</span><button class="copy-btn" type="button">Copy</button></div>
+        <pre><code><span class="y-k">name</span>: tonk
+<span class="y-k">on</span>:
+  <span class="y-k">workflow_run</span>:
+    <span class="y-k">workflows</span>: [<span class="y-s">CI</span>, <span class="y-s">Release</span>]
+    <span class="y-k">types</span>: [<span class="y-s">completed</span>]
+  <span class="y-k">pull_request</span>:
+    <span class="y-k">types</span>: [<span class="y-s">opened</span>, <span class="y-s">reopened</span>, <span class="y-s">closed</span>]
+<span class="y-k">permissions</span>:
+  <span class="y-k">actions</span>: read
+  <span class="y-k">contents</span>: read
+<span class="y-k">jobs</span>:
+  <span class="y-k">ci</span>:
+    <span class="y-k">if</span>: github.event_name == 'workflow_run'
+    <span class="y-k">uses</span>: zandoh/tonk/.github/workflows/notify.yml@v2
+    <span class="y-k">secrets</span>:
+      <span class="y-k">webhook</span>: ${{ secrets.TONK_DISCORD_WEBHOOK }}
+  <span class="y-k">pr</span>:
+    <span class="y-k">if</span>: github.event_name == 'pull_request'
+    <span class="y-k">uses</span>: zandoh/tonk/.github/workflows/pr.yml@v2
+    <span class="y-k">secrets</span>:
+      <span class="y-k">webhook</span>: ${{ secrets.TONK_DISCORD_WEBHOOK }}</code></pre>
+      </div>
     </div>
   </section>
 
@@ -563,7 +602,8 @@
       <h2>One small YAML file, every key optional.</h2>
       <p class="prose">
         tonk reads <code>.github/discord.yml</code> from the <strong>default
-        branch</strong> of the calling repo. No file means all defaults.
+        branch</strong> of the calling repo (the <strong>base ref</strong> for
+        <code>pr.yml</code>). No file means all defaults.
       </p>
       <div class="code" style="max-width: 560px;">
         <div class="code-bar"><span>.github/discord.yml</span><button class="copy-btn" type="button">Copy</button></div>
@@ -571,7 +611,8 @@
 <span class="y-k">notify</span>:
   <span class="y-k">failure</span>: true
   <span class="y-k">recovery</span>: true
-  <span class="y-k">pull-requests</span>: false</code></pre>
+  <span class="y-k">pull-requests</span>: false
+  <span class="y-k">pull-request-activity</span>: true</code></pre>
       </div>
       <div class="tbl-scroll">
           <table>
@@ -581,7 +622,8 @@
               <tr><td><code>avatar</code></td><td>the <a href="assets/tonk.png">tonk icon</a></td><td>Bot avatar image URL</td></tr>
               <tr><td><code>notify.failure</code></td><td><code>true</code></td><td>Post when a watched workflow fails</td></tr>
               <tr><td><code>notify.recovery</code></td><td><code>true</code></td><td>Post the first green after a failure</td></tr>
-              <tr><td><code>notify.pull-requests</code></td><td><code>false</code></td><td>Include PR-triggered runs — off by default, because red PRs are part of iterating</td></tr>
+              <tr><td><code>notify.pull-requests</code></td><td><code>false</code></td><td>Include PR-triggered CI runs in failure/recovery — off by default, because red PRs are part of iterating</td></tr>
+              <tr><td><code>notify.pull-request-activity</code></td><td><code>true</code></td><td>Post PR opened / reopened / merged / closed embeds (<code>pr.yml</code>)</td></tr>
             </tbody>
           </table>
       </div>

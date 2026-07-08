@@ -22,6 +22,7 @@ No server, no database, nothing to host.
 |---|---|
 | [`action.yml`](action.yml) (repo root) | Composite action that posts one embed, with guard rails built in |
 | [`.github/workflows/notify.yml`](.github/workflows/notify.yml) | Reusable workflow: failure alerts + back-to-green recovery detection for `workflow_run` events |
+| [`.github/workflows/pr.yml`](.github/workflows/pr.yml) | Reusable workflow: pull-request opened / reopened / merged / closed embeds for `pull_request` events |
 
 ## Quick start
 
@@ -59,6 +60,59 @@ embed; the first green run after a failure posts a "back to green" — and
 only the first, because the reusable workflow checks whether the previous
 completed run of the same workflow on the same branch was red.
 
+## Pull-request notifications
+
+The `pr.yml` reusable workflow posts a branded embed when a PR is opened,
+reopened, merged, or closed without merging — the same firehose Discord's
+first-party GitHub app sends, but under the tonk name and icon (and your
+`.github/discord.yml` personality) instead of "GitHub".
+
+GitHub only runs a repo's own workflows in response to that repo's events, so
+the trigger has to live in the caller — there's no way to fire it centrally
+from `zandoh/tonk` without a hosted webhook service. But it needn't be a
+second file: add a `pull_request` trigger and a `pr` job to the same
+`tonk.yml` you already have. Each event runs only its matching job.
+
+```yaml
+# .github/workflows/tonk.yml
+name: tonk
+on:
+  workflow_run:
+    workflows: [CI, Release]
+    types: [completed]
+  pull_request:
+    types: [opened, reopened, closed]
+permissions:
+  actions: read # recovery detection reads run history
+  contents: read # reads .github/discord.yml
+jobs:
+  ci:
+    if: github.event_name == 'workflow_run'
+    uses: zandoh/tonk/.github/workflows/notify.yml@v2
+    secrets:
+      webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
+  pr:
+    if: github.event_name == 'pull_request'
+    uses: zandoh/tonk/.github/workflows/pr.yml@v2
+    secrets:
+      webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
+```
+
+(Prefer them split? A standalone `tonk-pr.yml` with just the `pull_request`
+trigger and the `pr` job works identically — it's a taste call, not a
+requirement.)
+
+Each event colors its embed distinctly — opened green, reopened blue, merged
+purple, closed-without-merge grey. Draft PRs are skipped on open and reopen
+(a draft isn't ready to announce); closing one still posts. Fork PRs receive
+no secret, so their runs skip silently like everything else in tonk. Turn the
+whole stream off without removing the workflow via
+`notify.pull-request-activity: false` in `discord.yml`.
+
+If you're migrating off the first-party GitHub app, run
+`/github unsubscribe owner/repo` in the Discord channel once this is live so
+the two don't double-post.
+
 ## Configuration
 
 `.github/discord.yml` in the calling repo, read from the default branch.
@@ -68,9 +122,15 @@ Every key is optional.
 |---|---|---|
 | `username` | `tonk` | Bot name shown on posts |
 | `avatar` | the [tonk icon](https://zandoh.github.io/tonk/assets/tonk.png) | Bot avatar image URL |
-| `notify.failure` | `true` | Post when a watched workflow fails |
-| `notify.recovery` | `true` | Post the first green after a failure |
-| `notify.pull-requests` | `false` | Include PR-triggered runs (red PRs are part of iterating, so they're excluded by default) |
+| `notify.failure` | `true` | Post when a watched workflow fails (`notify.yml`) |
+| `notify.recovery` | `true` | Post the first green after a failure (`notify.yml`) |
+| `notify.pull-requests` | `false` | Include PR-triggered CI runs in failure/recovery (`notify.yml`) |
+| `notify.pull-request-activity` | `true` | Post PR opened/reopened/merged/closed embeds (`pr.yml`) |
+
+`pull-requests` and `pull-request-activity` are different knobs: the first
+decides whether a *CI run* on a PR can trigger a failure/recovery ping; the
+second decides whether the PR's *lifecycle* (open, merge, close) is announced
+at all. For `pr.yml`, this file is read from the base ref, not the PR head.
 
 ```yaml
 username: Hearth CI
@@ -79,6 +139,7 @@ notify:
   failure: true
   recovery: true
   pull-requests: false
+  pull-request-activity: true
 ```
 
 ## One-off embeds
