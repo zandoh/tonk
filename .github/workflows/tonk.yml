@@ -8,6 +8,10 @@ on:
     types: [completed]
   pull_request:
     types: [opened, reopened, closed]
+  issues:
+    types: [opened, reopened, closed]
+  release:
+    types: [published]
 
 permissions:
   actions: read
@@ -25,3 +29,45 @@ jobs:
     uses: zandoh/tonk/.github/workflows/pr.yml@main
     secrets:
       webhook: ${{ secrets.TONK_DISCORD_WEBHOOK }}
+
+  issues:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: zandoh/tonk@main
+        with:
+          webhook-url: ${{ secrets.TONK_DISCORD_WEBHOOK }}
+          title: "🎫 Issue #${{ github.event.issue.number }} ${{ github.event.action }}"
+          description: ${{ github.event.issue.title }} (by ${{ github.event.issue.user.login }})
+          url: ${{ github.event.issue.html_url }}
+          color: "16756480"
+
+  # tonk publishes GitHub Releases by hand, so they're user-authored and the
+  # `release` event does fire here — unlike a GITHUB_TOKEN-published release.
+  release:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Prepare release notes
+        id: notes
+        env:
+          NOTES: ${{ github.event.release.body }}
+        run: |
+          {
+            echo 'body<<TONK_NOTES_EOF'
+            # Discord embeds don't render markdown headers; bold them instead.
+            printf '%s' "$NOTES" | sed -E 's/^#+ +(.*)$/**\1**/'
+            echo
+            echo TONK_NOTES_EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Announce release on Discord
+        uses: zandoh/tonk@main
+        with:
+          webhook-url: ${{ secrets.TONK_DISCORD_WEBHOOK }}
+          title: 🚀 tonk ${{ github.event.release.tag_name }} released
+          description: ${{ steps.notes.outputs.body }}
+          url: ${{ github.event.release.html_url }}
+          color: "5793266"
