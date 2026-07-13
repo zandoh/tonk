@@ -134,7 +134,7 @@ jobs:
         if: >-
           github.event.workflow_run.conclusion == 'failure' &&
           steps.cfg.outputs.failure == 'true'
-        uses: zandoh/tonk@v2
+        uses: zandoh/tonk@v2.1.0
         with:
           webhook-url: ${{ secrets.webhook }}
           status: failure
@@ -147,7 +147,7 @@ jobs:
 
       - name: Post recovery to Discord
         if: steps.prev.outputs.recovered == 'true'
-        uses: zandoh/tonk@v2
+        uses: zandoh/tonk@v2.1.0
         with:
           webhook-url: ${{ secrets.webhook }}
           status: success

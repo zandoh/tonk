@@ -119,7 +119,7 @@ jobs:
 
       - name: Post PR event to Discord
         if: steps.cfg.outputs.post == 'true'
-        uses: zandoh/tonk@v2
+        uses: zandoh/tonk@v2.1.0
         with:
           webhook-url: ${{ secrets.webhook }}
           title: ${{ steps.cfg.outputs.title }}
