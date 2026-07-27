@@ -45,7 +45,7 @@ jobs:
       # is the target repo's, and a PR must not rewrite its own notification
       # rules. Nothing here executes checked-out code — it only reads YAML.
       - name: Check out caller config
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           sparse-checkout: .github
